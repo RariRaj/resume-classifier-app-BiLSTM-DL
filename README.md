@@ -25,6 +25,7 @@ Plaintext
 ├── app.py                             # Streamlit Web Application
 ├── requirements.txt                   # Environment dependencies
 └── README.md                          # Project documentation
+└── runtime.txt                        # python version
 
 🏯The Complete Architecture 
 What the project does
