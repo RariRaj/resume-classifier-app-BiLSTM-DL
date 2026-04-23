@@ -9,7 +9,8 @@ nltk==3.8.1
 setuptools>=65.0.0
 wheel
 
-protobuf==3.19.6
+protobuf>=3.19.6,<3.20
+streamlit==1.56.0
 
 rich==13.7.1
 markdown-it-py==3.0.0
