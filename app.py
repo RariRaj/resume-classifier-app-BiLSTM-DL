@@ -1,9 +1,9 @@
 import os
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
-# Define the absolute path to the model
+# Build the path
 curr_dir = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(curr_dir, "streamlit_assets", "resume_classifier.keras")
+model_path = os.path.join(curr_dir, "streamlit_assets", "resume_classifier.h5")
 
 
 import streamlit as st
@@ -43,13 +43,19 @@ class AttentionLayer(Layer):
 
 @st.cache_resource
 def load_model_and_assets():
-    if not os.path.exists(model_path):
-        st.error(f"Model file not found at {model_path}")
+    # Debug: Check if file exists and its size
+    if os.path.exists(model_path):
+        size_mb = os.path.getsize(model_path) / (1024 * 1024)
+        print(f"DEBUG: Model found. Size: {size_mb:.2f} MB")
+    else:
+        st.error(f"Model file NOT found at: {model_path}")
         return None, None, None
 
+    # Load using the .h5 file
     model = tf.keras.models.load_model(
         model_path,
         custom_objects={"AttentionLayer": AttentionLayer},
+        compile=False,  # Adding this ensures it doesn't fail on optimizer states
     )
 
     # 2. Load the Tokenizer
