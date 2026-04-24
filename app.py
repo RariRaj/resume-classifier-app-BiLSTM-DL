@@ -47,45 +47,47 @@ class AttentionLayer(Layer):
     def get_config(self):
         return super(AttentionLayer, self).get_config()
 
+    # --- 2. Load Model and Assets ---@st.cache_resource
 
-# --- 2. Load Model and Assets ---
-@st.cache_resource
+
 def load_model_and_assets():
-    # Use absolute paths to ensure Streamlit Cloud finds the files
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Pathing for assets in the streamlit_assets folder
     weights_path = os.path.join(
         curr_dir, "streamlit_assets", "model_weights.weights.h5"
     )
-    tokenizer_path = os.path.join(curr_dir, "streamlit_assets", "tokenizer.pkl")
-    le_path = os.path.join(curr_dir, "streamlit_assets", "label_encoder.pkl")
 
-    # Reconstruct the exact architecture used in training
-    # Reconstruct the exact architecture
+    # 1. Reconstruct EXACTLY based on your H5 shapes
     model = tf.keras.Sequential(
         [
+            # Shape: (25000, 256)
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            # 256 units * 2 (Bidirectional) = 512 total output features
-            layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
-            # AttentionLayer will now pass 512 features to the next layer
+            # LSTM Shape: (256, 512) -> 512/4 = 128 units
+            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
+            # Attention Layer Shape: (256, 1) -> Expects 256 features from Bi-LSTM
             AttentionLayer(),
-            # This matches the (512, 512) matrix in your weights file
+            # Batch Normalization (512 features from Bi-LSTM 128*2)
+            layers.BatchNormalization(),
+            # Dense 1 Shape: (512, 512)
             layers.Dense(512, activation="relu"),
-            # Ensure '25' matches your actual number of resume categories
-            layers.Dense(25, activation="softmax"),
+            layers.BatchNormalization(),
+            # Dense 2 Shape: (512, 256)
+            layers.Dense(256, activation="relu"),
+            layers.BatchNormalization(),
+            # Dense 3 Shape: (256, 128)
+            layers.Dense(128, activation="relu"),
+            # Final Output Shape: (128, 43) -> 43 Categories
+            layers.Dense(43, activation="softmax"),
         ]
     )
 
-    # Build the model with the expected input shape to initialize weights
-    # This prevents the "model not built" ValueError
+    # 2. Build the model
     model.build(input_shape=(None, 300))
 
-    # Load weights into the built model
+    # 3. Load weights
     if os.path.exists(weights_path):
         model.load_weights(weights_path)
     else:
-        st.error(f"Weights file NOT found at: {weights_path}")
+        st.error("Weights file not found!")
         return None, None, None
 
     # Load the Tokenizer
