@@ -59,37 +59,31 @@ def load_model_and_assets():
     le_path = os.path.join(curr_dir, "streamlit_assets", "label_encoder.pkl")
 
     # Reconstruct based on the verified H5 shapes
-   model = tf.keras.Sequential([
-        # 1. Embedding: (25000, 256) -> Matches H5
-        layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-        
-        # 2. Bi-LSTM: 128 units -> Concatenates to 256 total features
-        layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
-        
-        # 3. Attention: Takes 256 features, outputs 256 features
-        AttentionLayer(),
-        
-        # 4. THE BRIDGE: This is why the BN layer was failing. 
-        # It needs to take the 256 from Attention and turn it into 512.
-        layers.Dense(512, activation="relu"), 
-        
-        # 5. BN 1: Now matches Received: (512,)
-        layers.BatchNormalization(),
-        
-        # 6. Dense 1: Matches (512, 512) from H5
-        layers.Dense(512, activation="relu"),
-        layers.BatchNormalization(),
-        
-        # 7. Dense 2: Matches (512, 256)
-        layers.Dense(256, activation="relu"),
-        layers.BatchNormalization(),
-        
-        # 8. Dense 3: Matches (256, 128)
-        layers.Dense(128, activation="relu"),
-        
-        # 9. Output: Matches (128, 43)
-        layers.Dense(43, activation="softmax")
-    ])
+    model = tf.keras.Sequential(
+        [
+            # 1. Embedding: (25000, 256) -> Matches H5
+            layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
+            # 2. Bi-LSTM: 128 units -> Concatenates to 256 total features
+            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
+            # 3. Attention: Takes 256 features, outputs 256 features
+            AttentionLayer(),
+            # 4. THE BRIDGE: This is why the BN layer was failing.
+            # It needs to take the 256 from Attention and turn it into 512.
+            layers.Dense(512, activation="relu"),
+            # 5. BN 1: Now matches Received: (512,)
+            layers.BatchNormalization(),
+            # 6. Dense 1: Matches (512, 512) from H5
+            layers.Dense(512, activation="relu"),
+            layers.BatchNormalization(),
+            # 7. Dense 2: Matches (512, 256)
+            layers.Dense(256, activation="relu"),
+            layers.BatchNormalization(),
+            # 8. Dense 3: Matches (256, 128)
+            layers.Dense(128, activation="relu"),
+            # 9. Output: Matches (128, 43)
+            layers.Dense(43, activation="softmax"),
+        ]
+    )
 
     model.build(input_shape=(None, 300))
 
