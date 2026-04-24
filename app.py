@@ -65,12 +65,15 @@ def load_model_and_assets():
     # Reconstruct the exact architecture
     model = tf.keras.Sequential(
         [
+            # input_dim=25000, output_dim=256
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            # 256 units * 2 (Bidirectional) = 512 output features
-            layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
+            # Bidirectional with 128 units (Total 256 output features)
+            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
+            # Attention handles the 256 features
             AttentionLayer(),
-            # Now this will naturally receive 512 features to match your weights
+            # First Dense layer must have 512 units to match your weights
             layers.Dense(512, activation="relu"),
+            # Final Category output
             layers.Dense(25, activation="softmax"),
         ]
     )
