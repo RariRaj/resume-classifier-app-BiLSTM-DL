@@ -43,20 +43,29 @@ class AttentionLayer(Layer):
 
 @st.cache_resource
 def load_model_and_assets():
-    # Debug: Check if file exists and its size
-    if os.path.exists(model_path):
-        size_mb = os.path.getsize(model_path) / (1024 * 1024)
-        print(f"DEBUG: Model found. Size: {size_mb:.2f} MB")
-    else:
-        st.error(f"Model file NOT found at: {model_path}")
-        return None, None, None
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    # Update this path to your weights file name
+    weights_path = os.path.join(curr_dir, "streamlit_assets", "model_weights.h5")
 
-    # Load using the .h5 file
-    model = tf.keras.models.load_model(
-        model_path,
-        custom_objects={"AttentionLayer": AttentionLayer},
-        compile=False,  # Adding this ensures it doesn't fail on optimizer states
+    # 2. Reconstruct Model Architecture
+    # Note: Ensure these parameters (25000, 256, 300) match your training exactly
+    model = tf.keras.Sequential(
+        [
+            layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
+            layers.Bidirectional(layers.LSTM(64, return_sequences=True)),
+            AttentionLayer(),
+            layers.Dense(32, activation="relu"),
+            layers.Dense(
+                25, activation="softmax"
+            ),  # Replace 25 with your actual number of classes
+        ]
     )
+
+    if os.path.exists(weights_path):
+        model.load_weights(weights_path)
+    else:
+        st.error(f"Weights file not found at {weights_path}")
+        return None, None, None
 
     # 2. Load the Tokenizer
     with open("streamlit_assets/tokenizer.pkl", "rb") as f:
