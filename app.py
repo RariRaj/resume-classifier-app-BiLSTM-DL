@@ -16,7 +16,11 @@ import pickle
 import re
 
 
-# Define the custom AttentionLayer (must be available when loading the model)
+# Resolve potential protobuf conflicts
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+
+# --- 1. Define Custom Attention Layer ---
 class AttentionLayer(Layer):
     def __init__(self, **kwargs):
         super(AttentionLayer, self).__init__(**kwargs)
@@ -34,6 +38,7 @@ class AttentionLayer(Layer):
         super(AttentionLayer, self).build(input_shape)
 
     def call(self, x):
+        # Attention Mechanism: e = tanh(Wx + b)
         e = tf.nn.tanh(tf.matmul(x, self.W) + self.b)
         a = tf.nn.softmax(e, axis=1)
         return tf.reduce_sum(x * a, axis=1)
@@ -42,14 +47,18 @@ class AttentionLayer(Layer):
         return super(AttentionLayer, self).get_config()
 
 
+# --- 2. Load Model and Assets ---
 @st.cache_resource
 def load_model_and_assets():
+    # Use absolute paths to ensure Streamlit Cloud finds the files
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    # Update this path to your weights file name
-    weights_path = os.path.join(curr_dir, "streamlit_assets", "model_weights.h5")
 
-    # 2. Reconstruct Model Architecture
-    # Note: Ensure these parameters (25000, 256, 300) match your training exactly
+    weights_path = os.path.join(curr_dir, "streamlit_assets", "model_weights.h5")
+    tokenizer_path = os.path.join(curr_dir, "streamlit_assets", "tokenizer.pkl")
+    le_path = os.path.join(curr_dir, "streamlit_assets", "label_encoder.pkl")
+
+    # Reconstruct the exact architecture used in training
+    # input_dim: 25000, output_dim: 256, input_length: 300
     model = tf.keras.Sequential(
         [
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
@@ -58,46 +67,55 @@ def load_model_and_assets():
             layers.Dense(32, activation="relu"),
             layers.Dense(
                 25, activation="softmax"
-            ),  # Replace 25 with your actual number of classes
+            ),  # Ensure 25 matches your training classes
         ]
     )
 
+    # Load weights into the reconstructed model
     if os.path.exists(weights_path):
         model.load_weights(weights_path)
     else:
-        st.error(f"Weights file not found at {weights_path}")
+        st.error(f"Weights file NOT found at: {weights_path}")
         return None, None, None
 
-    # 2. Load the Tokenizer
-    with open("streamlit_assets/tokenizer.pkl", "rb") as f:
-        tokenizer = pickle.load(f)
+    # Load the Tokenizer
+    if os.path.exists(tokenizer_path):
+        with open(tokenizer_path, "rb") as f:
+            tokenizer = pickle.load(f)
+    else:
+        st.error("Tokenizer not found!")
+        return None, None, None
 
-    # 3. Load the Label Encoder
-    with open("streamlit_assets/label_encoder.pkl", "rb") as f:
-        le = pickle.load(f)
+    # Load the Label Encoder
+    if os.path.exists(le_path):
+        with open(le_path, "rb") as f:
+            le = pickle.load(f)
+    else:
+        st.error("Label Encoder not found!")
+        return None, None, None
 
     return model, tokenizer, le
 
 
+# Initialize everything
 model, tokenizer, le = load_model_and_assets()
 
 
+# --- 3. Prediction Logic ---
 def predict_new_resume(text):
-    # Basic Cleaning (Matches your training preprocessing)
+    # Preprocessing
     text = str(text).lower()
     text = re.sub(r"[^a-zA-Z\s]", " ", text)
     text = " ".join(text.split())
 
-    # 1. Convert text to sequence of numbers
+    # Tokenize and Pad
     sequence = tokenizer.texts_to_sequences([text])
-
-    # 2. Pad to the same length used in training (300)
     padded = pad_sequences(sequence, maxlen=300, padding="post", truncating="post")
 
-    # 3. Predict
+    # Run Inference
     prediction = model.predict(padded, verbose=0)
 
-    # 4. Get the category name
+    # Extract results
     class_idx = np.argmax(prediction)
     category = le.classes_[class_idx]
     confidence = np.max(prediction) * 100
@@ -105,17 +123,22 @@ def predict_new_resume(text):
     return category, confidence
 
 
-# Streamlit UI
+# --- 4. Streamlit UI ---
+st.set_page_config(page_title="Resume Classifier", page_icon="📄")
 st.title("Resume Category Classifier")
-st.write("Upload a resume or paste text to predict its category.")
+st.write("Upload or paste a resume to determine its professional category.")
 
-# Input text area for resume
 resume_text = st.text_area("Paste Resume Text Here:", height=300)
 
 if st.button("Predict Category"):
-    if resume_text:
-        category, confidence = predict_new_resume(resume_text)
-        st.success(f"**Predicted Category:** {category}")
-        st.info(f"**Confidence:** {confidence:.2f}%")
+    if not resume_text:
+        st.warning("Please provide some text.")
+    elif model is None:
+        st.error(
+            "Model initialization failed. Please check file paths in 'streamlit_assets'."
+        )
     else:
-        st.warning("Please paste some resume text to get a prediction.")
+        with st.spinner("Analyzing resume structure..."):
+            category, confidence = predict_new_resume(resume_text)
+            st.success(f"**Predicted Category:** {category}")
+            st.info(f"**Confidence:** {confidence:.2f}%")
