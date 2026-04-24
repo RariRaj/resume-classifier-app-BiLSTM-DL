@@ -61,24 +61,27 @@ def load_model_and_assets():
         [
             # Shape: (25000, 256)
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            # LSTM Shape: (256, 512) -> 512/4 = 128 units
-            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
-            # Attention Layer Shape: (256, 1) -> Expects 256 features from Bi-LSTM
+            # CHANGED: 256 units * 2 directions = 512.
+            # This fixes the BatchNormalization error (expects 512).
+            layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
+            # Attention Layer now receives 512 and outputs 512
             AttentionLayer(),
-            # Batch Normalization (512 features from Bi-LSTM 128*2)
+            # Matches BatchNormalization shape (512,)
             layers.BatchNormalization(),
-            # Dense 1 Shape: (512, 512)
+            # Matches Dense kernel shape (512, 512)
             layers.Dense(512, activation="relu"),
             layers.BatchNormalization(),
-            # Dense 2 Shape: (512, 256)
+            # Dense 2: (512, 256)
             layers.Dense(256, activation="relu"),
             layers.BatchNormalization(),
-            # Dense 3 Shape: (256, 128)
+            # Dense 3: (256, 128)
             layers.Dense(128, activation="relu"),
-            # Final Output Shape: (128, 43) -> 43 Categories
+            # Final Output: (128, 43)
             layers.Dense(43, activation="softmax"),
         ]
     )
+
+    model.build(input_shape=(None, 300))
 
     # 2. Build the model
     model.build(input_shape=(None, 300))
