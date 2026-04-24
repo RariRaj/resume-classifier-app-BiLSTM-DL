@@ -65,12 +65,14 @@ def load_model_and_assets():
     model = tf.keras.Sequential(
         [
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            layers.Bidirectional(layers.LSTM(64, return_sequences=True)),
+            layers.Bidirectional(
+                layers.LSTM(128, return_sequences=True)
+            ),  # Changed 64 -> 128
             AttentionLayer(),
-            layers.Dense(32, activation="relu"),
             layers.Dense(
-                25, activation="softmax"
-            ),  # Ensure 25 matches your actual class count
+                64, activation="relu"
+            ),  # Likely 64 if the weights are failing here too
+            layers.Dense(25, activation="softmax"),
         ]
     )
 
