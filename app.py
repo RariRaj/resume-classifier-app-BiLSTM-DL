@@ -61,26 +61,22 @@ def load_model_and_assets():
     # Reconstruct based on the verified H5 shapes
     model = tf.keras.Sequential(
         [
-            # 1. Embedding: (25000, 256) -> Matches H5
+            # 1. Embedding
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            # 2. Bi-LSTM: 128 units -> Concatenates to 256 total features
-            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
-            # 3. Attention: Takes 256 features, outputs 256 features
+            # 2. Bi-LSTM (256 units -> Outputs 512 features)
+            layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
+            # 3. Attention (Receives 512, Outputs 512)
             AttentionLayer(),
-            # 4. THE BRIDGE: This is why the BN layer was failing.
-            # It needs to take the 256 from Attention and turn it into 512.
-            layers.Dense(512, activation="relu"),
-            # 5. BN 1: Now matches Received: (512,)
+            # 4. BatchNormalization (Matches H5 Shape 512)
             layers.BatchNormalization(),
-            # 6. Dense 1: Matches (512, 512) from H5
+            # 5. The Dense Stack (512 -> 512 -> 256 -> 128 -> 43)
+            # Your error "Received (512, 512)" confirms this layer starts the chain
             layers.Dense(512, activation="relu"),
             layers.BatchNormalization(),
-            # 7. Dense 2: Matches (512, 256)
             layers.Dense(256, activation="relu"),
             layers.BatchNormalization(),
-            # 8. Dense 3: Matches (256, 128)
             layers.Dense(128, activation="relu"),
-            # 9. Output: Matches (128, 43)
+            # Final Output
             layers.Dense(43, activation="softmax"),
         ]
     )
