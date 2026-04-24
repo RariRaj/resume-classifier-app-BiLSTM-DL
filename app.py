@@ -80,7 +80,6 @@ def load_model_and_assets():
             layers.Dense(43, activation="softmax"),
         ]
     )
-
     model.build(input_shape=(None, 300))
 
     if os.path.exists(weights_path):
