@@ -1,6 +1,9 @@
 import os
 
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+# Define the absolute path to the model
+curr_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(curr_dir, "streamlit_assets", "resume_classifier.keras")
 
 import streamlit as st
 import tensorflow as tf
@@ -41,7 +44,7 @@ class AttentionLayer(Layer):
 def load_model_and_assets():
     # 1. Load the Model (Mapping the custom layer)
     model = tf.keras.models.load_model(
-        "streamlit_assets/resume_classifier.keras",
+        model_path,
         custom_objects={"AttentionLayer": AttentionLayer},
     )
 
