@@ -61,22 +61,23 @@ def load_model_and_assets():
         [
             # Shape: (25000, 256)
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            # CHANGED: 256 units * 2 directions = 512.
-            # This fixes the BatchNormalization error (expects 512).
+            # MUST be 256 to output 512 features (Forward 256 + Backward 256)
             layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
-            # Attention Layer now receives 512 and outputs 512
+            # AttentionLayer receives 512, performs weighted sum, and outputs 512
             AttentionLayer(),
-            # Matches BatchNormalization shape (512,)
+            # Dataset: layers/batch_normalization/vars/0 | Shape: (512,)
             layers.BatchNormalization(),
-            # Matches Dense kernel shape (512, 512)
+            # Dataset: layers/dense/vars/0 | Shape: (512, 512)
             layers.Dense(512, activation="relu"),
+            # Dataset: layers/batch_normalization_1/vars/0 | Shape: (512,)
             layers.BatchNormalization(),
-            # Dense 2: (512, 256)
+            # Dataset: layers/dense_1/vars/0 | Shape: (512, 256)
             layers.Dense(256, activation="relu"),
+            # Dataset: layers/batch_normalization_2/vars/0 | Shape: (256,)
             layers.BatchNormalization(),
-            # Dense 3: (256, 128)
+            # Dataset: layers/dense_2/vars/0 | Shape: (256, 128)
             layers.Dense(128, activation="relu"),
-            # Final Output: (128, 43)
+            # Dataset: layers/dense_3/vars/0 | Shape: (128, 43)
             layers.Dense(43, activation="softmax"),
         ]
     )
