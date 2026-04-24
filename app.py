@@ -61,10 +61,19 @@ def load_model_and_assets():
     # Reconstruct based on the verified H5 shapes
     model = tf.keras.Sequential(
         [
+            # Shape: (25000, 256)
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
+            # MUST BE 128: 128 units * 4 gates = 512 (Matches "Received" shape)
+            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
+            # Attention Layer
             AttentionLayer(),
+            # First BN layer (If this fails, we will move it)
             layers.BatchNormalization(),
+            # Dense 1: (512, 512)
+            # NOTE: If the LSTM is 128, Bi-LSTM outputs 256.
+            # To get to 512, your original model likely had an intermediate Dense
+            # layer or the Attention layer doubled the output.
+            # Let's try adding one more Dense(512) to bridge the 256 -> 512 gap.
             layers.Dense(512, activation="relu"),
             layers.BatchNormalization(),
             layers.Dense(256, activation="relu"),
