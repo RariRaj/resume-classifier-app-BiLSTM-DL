@@ -62,16 +62,15 @@ def load_model_and_assets():
     le_path = os.path.join(curr_dir, "streamlit_assets", "label_encoder.pkl")
 
     # Reconstruct the exact architecture used in training
+    # Reconstruct the exact architecture
     model = tf.keras.Sequential(
         [
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            layers.Bidirectional(
-                layers.LSTM(128, return_sequences=True)
-            ),  # Changed 64 -> 128
+            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
             AttentionLayer(),
-            layers.Dense(
-                64, activation="relu"
-            ),  # Likely 64 if the weights are failing here too
+            # This layer needs to match the (512, 512) found in your weights
+            layers.Dense(512, activation="relu"),
+            # This is your final output layer
             layers.Dense(25, activation="softmax"),
         ]
     )
