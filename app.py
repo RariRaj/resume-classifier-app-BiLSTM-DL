@@ -5,6 +5,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(curr_dir, "streamlit_assets", "resume_classifier.keras")
 
+
 import streamlit as st
 import tensorflow as tf
 from tensorflow.keras.layers import Layer
@@ -42,7 +43,10 @@ class AttentionLayer(Layer):
 
 @st.cache_resource
 def load_model_and_assets():
-    # 1. Load the Model (Mapping the custom layer)
+    if not os.path.exists(model_path):
+        st.error(f"Model file not found at {model_path}")
+        return None, None, None
+
     model = tf.keras.models.load_model(
         model_path,
         custom_objects={"AttentionLayer": AttentionLayer},
