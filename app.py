@@ -53,7 +53,9 @@ def load_model_and_assets():
     # Use absolute paths to ensure Streamlit Cloud finds the files
     curr_dir = os.path.dirname(os.path.abspath(__file__))
 
-    weights_path = os.path.join(curr_dir, "streamlit_assets", "model_weights.h5")
+    weights_path = os.path.join(
+        curr_dir, "streamlit_assets", "model_weights.weights.h5"
+    )
     tokenizer_path = os.path.join(curr_dir, "streamlit_assets", "tokenizer.pkl")
     le_path = os.path.join(curr_dir, "streamlit_assets", "label_encoder.pkl")
 
