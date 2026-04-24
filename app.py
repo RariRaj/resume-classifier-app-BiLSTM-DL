@@ -66,11 +66,11 @@ def load_model_and_assets():
     model = tf.keras.Sequential(
         [
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
-            layers.Bidirectional(layers.LSTM(128, return_sequences=True)),
+            # 256 units * 2 (Bidirectional) = 512 output features
+            layers.Bidirectional(layers.LSTM(256, return_sequences=True)),
             AttentionLayer(),
-            # This layer needs to match the (512, 512) found in your weights
+            # Now this will naturally receive 512 features to match your weights
             layers.Dense(512, activation="relu"),
-            # This is your final output layer
             layers.Dense(25, activation="softmax"),
         ]
     )
