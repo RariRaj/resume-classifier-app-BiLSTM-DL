@@ -21,6 +21,7 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 
 # --- 1. Define Custom Attention Layer ---
+# This must match the class definition used during training
 class AttentionLayer(Layer):
     def __init__(self, **kwargs):
         super(AttentionLayer, self).__init__(**kwargs)
@@ -53,6 +54,7 @@ def load_model_and_assets():
     # Use absolute paths to ensure Streamlit Cloud finds the files
     curr_dir = os.path.dirname(os.path.abspath(__file__))
 
+    # Pathing for assets in the streamlit_assets folder
     weights_path = os.path.join(
         curr_dir, "streamlit_assets", "model_weights.weights.h5"
     )
@@ -60,7 +62,6 @@ def load_model_and_assets():
     le_path = os.path.join(curr_dir, "streamlit_assets", "label_encoder.pkl")
 
     # Reconstruct the exact architecture used in training
-    # input_dim: 25000, output_dim: 256, input_length: 300
     model = tf.keras.Sequential(
         [
             layers.Embedding(input_dim=25000, output_dim=256, input_length=300),
@@ -69,11 +70,15 @@ def load_model_and_assets():
             layers.Dense(32, activation="relu"),
             layers.Dense(
                 25, activation="softmax"
-            ),  # Ensure 25 matches your training classes
+            ),  # Ensure 25 matches your actual class count
         ]
     )
 
-    # Load weights into the reconstructed model
+    # Build the model with the expected input shape to initialize weights
+    # This prevents the "model not built" ValueError
+    model.build(input_shape=(None, 300))
+
+    # Load weights into the built model
     if os.path.exists(weights_path):
         model.load_weights(weights_path)
     else:
@@ -85,7 +90,7 @@ def load_model_and_assets():
         with open(tokenizer_path, "rb") as f:
             tokenizer = pickle.load(f)
     else:
-        st.error("Tokenizer not found!")
+        st.error(f"Tokenizer not found at: {tokenizer_path}")
         return None, None, None
 
     # Load the Label Encoder
@@ -93,31 +98,31 @@ def load_model_and_assets():
         with open(le_path, "rb") as f:
             le = pickle.load(f)
     else:
-        st.error("Label Encoder not found!")
+        st.error(f"Label Encoder not found at: {le_path}")
         return None, None, None
 
     return model, tokenizer, le
 
 
-# Initialize everything
+# Initialize model, tokenizer, and label encoder
 model, tokenizer, le = load_model_and_assets()
 
 
 # --- 3. Prediction Logic ---
 def predict_new_resume(text):
-    # Preprocessing
+    # Basic Cleaning (Matches standard text preprocessing)
     text = str(text).lower()
     text = re.sub(r"[^a-zA-Z\s]", " ", text)
     text = " ".join(text.split())
 
-    # Tokenize and Pad
+    # Tokenize and Pad to maxlen=300
     sequence = tokenizer.texts_to_sequences([text])
     padded = pad_sequences(sequence, maxlen=300, padding="post", truncating="post")
 
     # Run Inference
     prediction = model.predict(padded, verbose=0)
 
-    # Extract results
+    # Extract predicted class and confidence
     class_idx = np.argmax(prediction)
     category = le.classes_[class_idx]
     confidence = np.max(prediction) * 100
@@ -128,19 +133,23 @@ def predict_new_resume(text):
 # --- 4. Streamlit UI ---
 st.set_page_config(page_title="Resume Classifier", page_icon="📄")
 st.title("Resume Category Classifier")
-st.write("Upload or paste a resume to determine its professional category.")
+st.write("Determine the professional category of a resume using BiLSTM + Attention.")
 
+# Input text area
 resume_text = st.text_area("Paste Resume Text Here:", height=300)
 
 if st.button("Predict Category"):
     if not resume_text:
-        st.warning("Please provide some text.")
+        st.warning("Please provide some text to analyze.")
     elif model is None:
         st.error(
-            "Model initialization failed. Please check file paths in 'streamlit_assets'."
+            "Assets failed to load. Please check the logs and your 'streamlit_assets' folder."
         )
     else:
-        with st.spinner("Analyzing resume structure..."):
-            category, confidence = predict_new_resume(resume_text)
-            st.success(f"**Predicted Category:** {category}")
-            st.info(f"**Confidence:** {confidence:.2f}%")
+        with st.spinner("Analyzing text..."):
+            try:
+                category, confidence = predict_new_resume(resume_text)
+                st.success(f"**Predicted Category:** {category}")
+                st.info(f"**Confidence:** {confidence:.2f}%")
+            except Exception as e:
+                st.error(f"Prediction error: {e}")
