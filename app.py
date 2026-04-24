@@ -8,6 +8,7 @@ model_path = os.path.join(curr_dir, "streamlit_assets", "resume_classifier.h5")
 
 import streamlit as st
 import tensorflow as tf
+from tensorflow.keras import layers
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import numpy as np
